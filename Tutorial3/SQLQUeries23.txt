@@ -1,0 +1,123 @@
+CREATE TABLE Enrollment (
+    IdEnrollment int  NOT NULL PRIMARY KEY ,
+    Semester int  NOT NULL,
+    IdStudy int  NOT NULL,
+    StartDate date  NOT NULL,
+);
+
+ALTER TABLE Enrollment ADD CONSTRAINT Enrollment_Studies
+    FOREIGN KEY (IdStudy)
+    REFERENCES Studies (IdStudy);
+
+-- Table: Student
+CREATE TABLE Student (
+    IndexNumber nvarchar(100)  NOT NULL PRIMARY KEY ,
+    FirstName nvarchar(100)  NOT NULL,
+    LastName nvarchar(100)  NOT NULL,
+    BirthDate date  NOT NULL,
+    IdEnrollment int  NOT NULL,
+);
+
+ALTER TABLE Student ADD CONSTRAINT Student_Enrollment
+    FOREIGN KEY (IdEnrollment)
+    REFERENCES Enrollment (IdEnrollment);
+
+-- Table: Studies
+CREATE TABLE Studies (
+    IdStudy int  NOT NULL PRIMARY KEY,
+    Name nvarchar(100)  NOT NULL,   
+);
+
+Insert Into Studies(IdStudy, Name) values(
+	31, 'IT'
+);
+Insert Into Studies(IdStudy, Name) values(
+	32, 'ART'
+);
+Insert Into Studies(IdStudy, Name) values(
+	33, 'MEDIA'
+);
+Insert Into Studies(IdStudy, Name) values(
+	34, 'IT'
+);
+
+---///////////////////////////////////////////////////////////////////////----
+
+Insert Into Enrollment(IdEnrollment, Semester, IdStudy, StartDate)values
+(
+11,2,(Select IdStudy from Studies Where Studies.IdStudy = 31) , '2013-11-11'
+);
+
+Insert Into Enrollment(IdEnrollment, Semester, IdStudy, StartDate)values
+(
+12,3,(Select IdStudy from Studies Where Studies.IdStudy = 32) , '2015-11-13'
+);
+
+Insert Into Enrollment(IdEnrollment, Semester, IdStudy, StartDate)values
+(
+13,6,(Select IdStudy from Studies Where Studies.IdStudy = 33) , '2015-11-13'
+);
+
+
+Insert Into Enrollment(IdEnrollment, Semester, IdStudy, StartDate)values
+(
+14,1,(Select IdStudy from Studies Where Studies.IdStudy = 34) , '2013-10-19'
+);
+---///////////////////////////////////////////////////////////////////////----
+
+
+Insert Into Student(IndexNumber, FirstName, LastName, BirthDate, IdEnrollment) values(
+21, 'Bob1','Johnson1','1955-11-13', (Select IdEnrollment From Enrollment Where Enrollment.IdEnrollment = 11)
+
+);
+
+Insert Into Student(IndexNumber, FirstName, LastName, BirthDate, IdEnrollment) values(
+22, 'Bob2','Johnson2','1956-11-13', (Select IdEnrollment From Enrollment Where Enrollment.IdEnrollment = 12)
+
+);
+
+
+Insert Into Student(IndexNumber, FirstName, LastName, BirthDate, IdEnrollment) values(
+23, 'Bob3','Johnson3','1957-11-13', (Select IdEnrollment From Enrollment Where Enrollment.IdEnrollment = 13)
+
+);
+
+Insert Into Student(IndexNumber, FirstName, LastName, BirthDate, IdEnrollment) values(
+24, 'Bob4','Johnson4','1952-11-13', (Select IdEnrollment From Enrollment Where Enrollment.IdEnrollment = 14)
+
+);
+
+select * from studies;
+select * from Student;
+select * from Enrollment;
+
+SET Serveroutput ON;
+ALTER PROCEDURE  PromoteStudents (@StudiesName VARCHAR(20), @TheSemester INT, @TheOutput INT OUTPUT)
+AS
+BEGIN
+
+	DECLARE @StudyId INT = (SELECT IdStudy FROM Studies WHERE [Name] = @StudiesName);
+	DECLARE @FOLLOWINGENROLLMENT INT = (SELECT IdEnrollment FROM Enrollment WHERE IdStudy= @StudyId AND Semester = @TheSemester + 1);			
+	DECLARE @PREVIOUSENROLLMENT INT = (SELECT TOP 1 IdEnrollment FROM Enrollment ORDER BY IdEnrollment DESC);
+	
+
+	IF @FOLLOWINGENROLLMENT IS NULL
+	BEGIN
+		INSERT INTO Enrollment(IdEnrollment,Semester,IdStudy,StartDate)
+		VALUES (@PREVIOUSENROLLMENT + 1,@TheSemester+1,@FOLLOWINGENROLLMENT,GETDATE());
+
+		SET @FOLLOWINGENROLLMENT = @PREVIOUSENROLLMENT + 1;
+
+	END
+
+	IF @StudyId IS NULL
+		BEGIN
+			RAISERROR('40421212 ERROR THERE ARE NO STUDIES THERE',1,1);
+		END
+
+	UPDATE Student SET
+	IdEnrollment = @FOLLOWINGENROLLMENT
+	WHERE IdEnrollment = (SELECT IdEnrollment FROM Enrollment WHERE Semester = @TheSemester AND IdStudy = @StudyId);
+
+	SET @TheOutput = @FOLLOWINGENROLLMENT;
+END;
